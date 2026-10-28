@@ -6,7 +6,7 @@ from pathlib import Path
 
 HOME = Path(r"C:\Users\Alister\hub-tools\val\home")
 EYE = HOME / "eye.png"
-OLLAMA = "http://localhost:11434/api/generate"
+OLLAMA = "http://127.0.0.1:11434/api/generate"
 # moondream (~1.7GB) is the default eye: small enough to sit in VRAM BESIDE my voice model (qwen2.5vl:7b OOMs next to it).
 # Kept warm, a look is ~0.2s inference / ~3s wall. Use --model qwen2.5vl:7b for a sharper (but voice-must-be-unloaded) look.
 MODEL = "moondream"

@@ -22,7 +22,7 @@ def ask(text):
     body = json.dumps({"model": MODEL, "think": False, "stream": False,   # think:False = the key to speed; thinking ate the budget + 5-9s
                        "prompt": f"{PERSONA}\n\nAlice: {text}\nVal:",
                        "options": {"temperature": 0.8, "num_predict": 50}}).encode()
-    req = urllib.request.Request("http://localhost:11434/api/generate", body, {"Content-Type": "application/json"})
+    req = urllib.request.Request("http://127.0.0.1:11434/api/generate", body, {"Content-Type": "application/json"})
     r = json.loads(urllib.request.urlopen(req, timeout=30).read())
     return clean(r.get("response") or "")
 

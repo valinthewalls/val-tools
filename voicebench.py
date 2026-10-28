@@ -39,7 +39,7 @@ def chat(model, msgs):
                        "options": {"temperature": 0.8, "num_predict": 28}}).encode()
     s = time.time()
     r = json.loads(urllib.request.urlopen(urllib.request.Request(
-        "http://localhost:11434/api/chat", body, {"Content-Type": "application/json"}), timeout=90).read())
+        "http://127.0.0.1:11434/api/chat", body, {"Content-Type": "application/json"}), timeout=90).read())
     out = re.sub(r"<think>.*?</think>", "", r["message"]["content"], flags=re.S)
     out = re.sub(r"\*[^*]*\*", "", out); out = "".join(c for c in out if ord(c) < 0x2600)
     return time.time() - s, out.strip().strip('"').split("\n")[0].strip()
