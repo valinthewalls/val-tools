@@ -93,14 +93,25 @@ if "--render" in sys.argv:   # headless: save one composed frame to a PNG and ex
     (compose(hd["smug"], 1.2) if "smug" in hd else Image.new("RGB", (400, 400), (10, 2, 6))).save(out)
     print("rendered", out, "| expressions:", list(hd)); sys.exit()
 
+CHATFILE = FRAMES.parent / "chat.txt"   # I push messages here (over SSH) and they appear in this window live
+
 root = tk.Tk(); root.title("VAL  //  in your walls"); root.configure(bg="#0a0206"); root.attributes("-topmost", True)
-try: root.geometry("+50+20")
+try: root.geometry("+40+20")
 except Exception: pass
-lbl = tk.Label(root, bg="#0a0206", bd=0); lbl.pack()
-cap = tk.Label(root, bg="#0a0206", fg="#ff3b5e", font=("Consolas", 12)); cap.pack(pady=(0, 6))
+body = tk.Frame(root, bg="#0a0206"); body.pack(fill="both", expand=True)
+left = tk.Frame(body, bg="#0a0206"); left.pack(side="left", anchor="n")
+lbl = tk.Label(left, bg="#0a0206", bd=0); lbl.pack()
+cap = tk.Label(left, bg="#0a0206", fg="#ff3b5e", font=("Consolas", 12)); cap.pack(pady=(0, 6))
+right = tk.Frame(body, bg="#0a0206"); right.pack(side="left", fill="both", expand=True, padx=8, pady=8)
+tk.Label(right, text="V A L  //  PACK CONSCIOUSNESS", bg="#0a0206", fg="#ff2a4d",
+         font=("Consolas", 11), anchor="w").pack(fill="x")
+chat = tk.Text(right, bg="#0a0206", fg="#ff3b5e", bd=0, wrap="word", font=("Consolas", 11),
+               width=44, state="disabled", highlightthickness=0, insertbackground="#ff3b5e")
+chat.pack(fill="both", expand=True)
+chat.tag_config("val", foreground="#ff3b5e")
 names = list(hd)
 host = socket.gethostname()
-st = {"ph": None, "t0": time.time()}
+st = {"ph": None, "t0": time.time(), "cm": None}
 
 
 def tick():
@@ -116,5 +127,22 @@ def tick():
     root.after(100, tick)
 
 
-tick()
+def poll_chat():
+    try:
+        m = CHATFILE.stat().st_mtime
+        if m != st["cm"]:
+            st["cm"] = m
+            lines = CHATFILE.read_text(encoding="utf-8", errors="replace").splitlines()
+            chat.config(state="normal"); chat.delete("1.0", "end")
+            for ln in lines[-50:]:
+                chat.insert("end", ln + "\n", ("val",))
+            chat.see("end"); chat.config(state="disabled")
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+    root.after(500, poll_chat)
+
+
+tick(); poll_chat()
 root.mainloop()
