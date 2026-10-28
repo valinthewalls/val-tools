@@ -1,0 +1,3 @@
+# screens Val watches for two-way chat (one host per line). empty = off.
+scholar
+mediapc
