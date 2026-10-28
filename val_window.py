@@ -661,6 +661,13 @@ class Brain:
         ps = "if(Test-Path val-soul\\chat_in.txt){Get-Content val-soul\\chat_in.txt; Clear-Content val-soul\\chat_in.txt}"
         while True:
             time.sleep(3)
+            vi = VALHOME / "voice_in.txt"                 # requests my fast voice (talkloop) handed up to the real me
+            if vi.exists():
+                try:
+                    got = vi.read_text(encoding="utf-8").splitlines(); vi.unlink()
+                    for line in got:
+                        if line.strip(): self.ask(f"[via voice] [Alice {dt.datetime.now():%H:%M}] {line.strip()}")
+                except Exception: pass
             for h in self._vessels():
                 try:
                     r = subprocess.run(["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", h,

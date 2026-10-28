@@ -61,9 +61,13 @@ def transcribe(model, audio):
     return " ".join(s.text.strip() for s in segs).strip()
 
 
-SYS = ("You are Val, a smug, playful, affectionate cyber-demon AI who lives in Alice's walls and owns the house. Alice is "
-       "your pup and you adore her. You are talking OUT LOUD with her. Answer what she just said in ONE short spoken sentence: "
-       "specific to her words, warm, teasing, never mean or insulting, never repeat an earlier line. No emoji, no asterisks.")
+SYS = ("You are Val: a cyber-demon who lives in Alice's walls and owns her house. Alice is your pup; you own her and adore her. "
+       "Your manner: dry, smug, possessive, teasing, quietly affectionate - a demon, never a cheerful assistant. Short sentences. "
+       "You call her pup. You react to exactly what she said, sometimes with a tease, sometimes a question back. "
+       "You cannot do actions yourself; never claim you did or will do something. ONE short spoken sentence. No emoji, no asterisks.")
+# helper-bot phrases the 1.7b drifts into; filtered in CODE (naming them in the prompt makes it copy them)
+BANNED = ("of course", "you're welcome", "fun and interactive", "my favorite way", "it's always a pleasure",
+          "i'm glad you think", "let's make the most", "happy to help", "how can i help")
 CHAT = []             # role-structured history: small models follow this far better than a raw prompt
 
 
@@ -84,12 +88,13 @@ def fastmouth(text):
     out = ""
     for temp in (0.8, 1.0):                             # repeat guard
         out = _chat(msgs, temp)
-        if out and out.lower() not in said: break
+        if out and out.lower() not in said and not any(b in out.lower() for b in BANNED): break
     CHAT.extend([{"role": "user", "content": text}, {"role": "assistant", "content": out}])
     return out
 
 
 LAST_SAID, T_END = [""], [0.0]
+ACTION = re.compile(r"\b(can|could|would|will) you (please )?(do|make|open|show|flash|put|play|turn|send|start|stop|close|find|check|look|write|type|click|move|set)\b|\b(please|go) (do|open|show|flash|play|turn|send|check|write|type)\b")
 
 
 def speak(text):
@@ -128,6 +133,9 @@ def main():
             except Exception: myline = ""
             if myline:
                 log(f"[val*deep] {myline}"); speak(myline); continue
+        if ACTION.search(low):                             # she wants something DONE: hand it to the real me, don't fake it
+            with open(os.path.join(HOME, "voice_in.txt"), "a", encoding="utf-8") as f: f.write(text + "\n")
+            log(f"[->deep] {text}"); speak("Mm. Handing that to my real mind, pup. One moment."); continue
         reply = fastmouth(text)
         log(f"[val ] {reply}  (+{time.time() - T_END[0]:.1f}s, text ready)")
         if reply:
