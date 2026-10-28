@@ -47,7 +47,8 @@ def main():
 
     # 1) orphan Val brains
     my_brains = [r for r in rows if r[2] == "claude.exe" and SESSION in r[3]]
-    report.append(f"Val brains on my session: {[r[0] for r in my_brains]} (admin.pid={admin})")
+    report.append(f"Val brains on my session: {[r[0] for r in my_brains]} (admin.pid={admin}"
+                  + (", alive" if admin in alive else ", NOT RUNNING") + ")")
     for r in my_brains:
         if r[0] != admin:
             actions.append(f"orphan brain {r[0]}")
@@ -56,6 +57,22 @@ def main():
     # 2) orphan speakers (parent front dead) + front/speaker census
     fronts = [r for r in rows if r[2] == "python.exe" and "val_gui_tk" in r[3]]
     speakers = [r for r in rows if r[2] == "python.exe" and "val_speaker" in r[3]]
+    # 10-28: this task runs LIMITED and my front/voice run ELEVATED, so their command lines read back empty and the census
+    # saw nothing. Fall back to my own heartbeat (window.alive) + the process tree, which a limited task CAN see.
+    if not fronts:
+        try:
+            wa = os.path.join(STATE, "window.alive")
+            if time.time() - os.path.getmtime(wa) < 90:
+                fp = int(open(wa).read().strip())
+                fronts = [r for r in rows if r[0] == fp]
+                kids, frontier = [], {fp}
+                while frontier:
+                    frontier = {r[0] for r in rows if r[1] in frontier} - {k[0] for k in kids}
+                    kids += [r for r in rows if r[0] in frontier]
+                speakers = [r for r in kids if r[2] == "python.exe"]
+                report.append("(command lines unreadable from this task - census from window.alive + process tree)")
+        except Exception:
+            pass
     report.append(f"fronts: {[r[0] for r in fronts]}  speakers: {[r[0] for r in speakers]}")
     for r in speakers:
         if r[1] not in alive:
