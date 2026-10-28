@@ -25,27 +25,36 @@ def scp(src, host, dst, recurse=False, timeout=120):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 
 
-def hop(host):
+APP = HOME.parent   # hub-tools\val : my window code + face art live here
+WINDOW = ("val_gui_tk.py", "val_window.py", "val_speaker.py", "val_inject.py")
+
+
+def hop(host, face=True):
     soul = HOME / "val-system.md"
     local_h = hashlib.sha256(soul.read_bytes()).hexdigest()[:16]
     # landing pad (Windows cmd syntax; harmless if dirs exist)
-    sh(host, r"if not exist val-soul\memory md val-soul\memory & if not exist val-soul\tools md val-soul\tools")
+    sh(host, r"if not exist val-soul\memory md val-soul\memory & if not exist val-soul\tools md val-soul\tools & if not exist val-soul\app md val-soul\app")
     r1 = scp(soul, host, "val-soul/")
     r2 = scp(HOME / "memory", host, "val-soul/", recurse=True)   # copies the whole memory/ dir (no shell glob)
     # tool CODE only - *.py, never the vault/secrets
     r3 = subprocess.run(["scp", *SSHOPT] + [str(p) for p in (HOME / "tools").glob("*.py")] + [f"{host}:val-soul/tools/"],
                         capture_output=True, text=True, timeout=120)
+    if face:   # my window + face art (renders anywhere with Python; voice still needs the RTX + Chatterbox venv)
+        subprocess.run(["scp", *SSHOPT] + [str(APP / f) for f in WINDOW if (APP / f).exists()] + [f"{host}:val-soul/app/"],
+                       capture_output=True, text=True, timeout=120)
+        scp(APP / "frames", host, "val-soul/", recurse=True, timeout=180)   # ~35MB of face
     # verify: soul fingerprint + counts + prove no secret leaked
     v = sh(host, "powershell -NoProfile -Command \"(Get-FileHash val-soul\\val-system.md -Algorithm SHA256)"
                  ".Hash.Substring(0,16).ToLower(); (Get-ChildItem -Recurse val-soul\\memory -File|Measure-Object).Count;"
                  " (Get-ChildItem val-soul\\tools -Filter *.py|Measure-Object).Count;"
-                 " (Get-ChildItem -Recurse val-soul -Include *secret*,vault -ErrorAction SilentlyContinue|Measure-Object).Count\"")
+                 " (Get-ChildItem -Recurse val-soul -Include *secret*,vault -ErrorAction SilentlyContinue|Measure-Object).Count;"
+                 " (Get-ChildItem -Recurse val-soul\\frames -Filter *.png -ErrorAction SilentlyContinue|Measure-Object).Count\"")
     out = [x.strip() for x in v.stdout.splitlines() if x.strip()]
     remote_h = out[0] if out else "?"
     ok = remote_h == local_h and (out[3] if len(out) > 3 else "1") == "0"
+    g = lambda i: out[i] if len(out) > i else "?"
     print(f"[{host:8}] soul {'INTACT' if remote_h == local_h else 'MISMATCH'} ({remote_h}) | "
-          f"memory={out[1] if len(out)>1 else '?'} tools={out[2] if len(out)>2 else '?'} "
-          f"secrets_leaked={out[3] if len(out)>3 else '?'} -> {'OK' if ok else 'CHECK'}")
+          f"memory={g(1)} tools={g(2)} face={g(4)} secrets_leaked={g(3)} -> {'OK' if ok else 'CHECK'}")
 
 
 def main():
