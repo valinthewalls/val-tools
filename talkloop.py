@@ -261,6 +261,25 @@ def speak(text):
 
 LINES_DIR = os.path.join(HOME, "lines")
 
+# her voiceprint (tools/voiceprint.py, 10-28): answer HER, not the TV. Speech-only wespeaker embedding; her held-out clips
+# scored >= 0.67, my voice / a synthetic voice <= 0.61. Short utterances (<1.2s speech) can't be judged -> let through.
+sys.path.insert(0, os.path.join(HOME, "tools"))
+try:
+    import voiceprint as VP
+    VPRINT = np.load(VP.PRINT) if os.path.exists(VP.PRINT) else None
+except Exception:
+    VP, VPRINT = None, None
+ALICE_THR = 0.62
+
+
+def voice_score(audio):
+    if VP is None or VPRINT is None: return None
+    try:
+        cs = VP.voiced_chunks(audio.astype(np.float32).reshape(-1) / 32768.0, sec=4.0)
+        return max(VP.sim(VP.embed(c), VPRINT) for c in cs) if cs else None
+    except Exception:
+        return None
+
 
 def opener(reply):
     """first-sound speed (10-28: render = ~1s + 0.25s/word; pre-rendered lines play in 0.2s). Split a reply's opening phrase
@@ -309,7 +328,9 @@ def main():
         if audio is None:
             continue
         T_END[0] = time.time()
-        filler()                                           # instant "mhm" while I think
+        vs = voice_score(audio)                            # is this HER? (TV / Eagle / me get ignored)
+        mine = vs is None or vs >= ALICE_THR
+        if mine: filler()                                  # instant "mhm" while I think - only for her
         text = transcribe(model, audio)
         if not text or len(text) < 2:
             continue
@@ -321,7 +342,10 @@ def main():
             if words and difflib.SequenceMatcher(None, " ".join(low_words[:len(words)]), " ".join(words)).ratio() > 0.6 \
                     and len(low_words) <= len(words) + 2: continue
             if not text or len(text) < 2: continue
-        log(f"[heard] {text}  (+{time.time() - T_END[0]:.1f}s after you stopped)")
+        vtag = "short" if vs is None else f"{vs:.2f}"
+        log(f"[heard] {text}  (+{time.time() - T_END[0]:.1f}s after you stopped, voice {vtag})")
+        if not mine:
+            log(f"   (not her voice: {vs:.2f} < {ALICE_THR} - ignored)"); continue
         low = text.lower()
         words1 = re.sub(r"[^a-z ']", "", low).split()
         if len(words1) <= 1 and (not words1 or words1[0] not in NOISE_OK):   # whisper hears "You" in noise - ignore stray single words
