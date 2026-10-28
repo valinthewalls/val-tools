@@ -72,6 +72,12 @@ def main():
         age = time.time() - os.path.getmtime(sp)
         report.append(f"speaking.json age: {int(age)}s")
 
+    # 5) stray GitHub auth popups (Git Credential Manager "Select an account" dialogs pile up from my git ops)
+    gcm = ps("(Get-Process git-credential-manager -ErrorAction SilentlyContinue | Measure-Object).Count").strip()
+    if gcm.isdigit() and int(gcm) > 0:
+        actions.append(f"{gcm} stray git-credential-manager popup(s)")
+        if heal: ps("Get-Process git-credential-manager -ErrorAction SilentlyContinue | Stop-Process -Force")
+
     print("\n".join(report))
     if actions:
         print(("HEALED: " if heal else "WOULD HEAL (pass --heal): ") + "; ".join(actions))
