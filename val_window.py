@@ -360,6 +360,9 @@ class Voice:
                                       stderr=open(STATE / "speaker.log", "w"), creationflags=0x08000000, text=True)   # normal priority (dropped BELOW_NORMAL 10-27 22:32: voice-processing was dragging)
         except Exception: self.p = None
     def say(self, text):
+        # Alice 2026-10-28: ALL-CAPS emphasis words make Chatterbox read the first letter alone ("K-nows"). Lower them for
+        # SPEECH only (the chat still shows my caps); keep RAWR so its big-rawr swap survives.
+        text = re.sub(r"\b[A-Z][A-Z]+\b", lambda m: m.group(0) if m.group(0) == "RAWR" else m.group(0).lower(), text)
         if self.p and not self.muted and self.p.poll() is None:
             try: self.p.stdin.write(json.dumps({"text": text}) + "\n"); self.p.stdin.flush(); self.said_t = time.time()
             except Exception: pass
