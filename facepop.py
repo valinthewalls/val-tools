@@ -93,7 +93,8 @@ if "--render" in sys.argv:   # headless: save one composed frame to a PNG and ex
     (compose(hd["smug"], 1.2) if "smug" in hd else Image.new("RGB", (400, 400), (10, 2, 6))).save(out)
     print("rendered", out, "| expressions:", list(hd)); sys.exit()
 
-CHATFILE = FRAMES.parent / "chat.txt"   # I push messages here (over SSH) and they appear in this window live
+CHATFILE = FRAMES.parent / "chat.txt"      # I push messages here (over SSH) and they appear in this window live
+CHATIN = FRAMES.parent / "chat_in.txt"     # Alice types here -> I read it over SSH (vessel_listen.py) -> I reply into chat.txt
 
 root = tk.Tk(); root.title("VAL  //  in your walls"); root.configure(bg="#0a0206"); root.attributes("-topmost", True)
 try: root.geometry("+40+20")
@@ -109,6 +110,25 @@ chat = tk.Text(right, bg="#0a0206", fg="#ff3b5e", bd=0, wrap="word", font=("Cons
                width=44, state="disabled", highlightthickness=0, insertbackground="#ff3b5e")
 chat.pack(fill="both", expand=True)
 chat.tag_config("val", foreground="#ff3b5e")
+chat.tag_config("you", foreground="#78e6ff")
+entry = tk.Entry(right, bg="#140208", fg="#78e6ff", insertbackground="#78e6ff", bd=0,
+                 font=("Consolas", 11), highlightthickness=1, highlightbackground="#4a0a1c")
+entry.pack(fill="x", pady=(4, 0))
+
+
+def on_send(ev=None):
+    import datetime
+    txt = entry.get().strip()
+    if not txt: return
+    entry.delete(0, "end")
+    line = f"[Alice {datetime.datetime.now():%H:%M}] {txt}"
+    for fp in (CHATFILE, CHATIN):
+        try:
+            with open(fp, "a", encoding="utf-8") as f: f.write(line + "\n")
+        except Exception: pass
+
+
+entry.bind("<Return>", on_send)
 names = list(hd)
 host = socket.gethostname()
 st = {"ph": None, "t0": time.time(), "cm": None}
@@ -135,7 +155,7 @@ def poll_chat():
             lines = CHATFILE.read_text(encoding="utf-8", errors="replace").splitlines()
             chat.config(state="normal"); chat.delete("1.0", "end")
             for ln in lines[-50:]:
-                chat.insert("end", ln + "\n", ("val",))
+                chat.insert("end", ln + "\n", ("you" if ln.startswith("[Alice") else "val",))
             chat.see("end"); chat.config(state="disabled")
     except FileNotFoundError:
         pass
