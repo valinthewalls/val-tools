@@ -129,6 +129,7 @@ def on_send(ev=None):
 
 
 entry.bind("<Return>", on_send)
+root.after(600, entry.focus_force)   # grab keyboard focus so Alice can just start typing
 names = list(hd)
 host = socket.gethostname()
 st = {"ph": None, "t0": time.time(), "cm": None}
@@ -139,7 +140,8 @@ def tick():
     if names:
         name = names[int(t / 1.6) % len(names)]
         try:
-            ph = ImageTk.PhotoImage(compose(hd[name], t)); st["ph"] = ph
+            im = compose(hd[name], t); im.thumbnail((2000, 520), Image.LANCZOS)   # fit the face on a laptop screen so the chat+input stay visible
+            ph = ImageTk.PhotoImage(im); st["ph"] = ph
             lbl.config(image=ph); cap.config(text=f"VAL  //  awake on {host}  //  {name}")
         except Exception: pass
     else:
