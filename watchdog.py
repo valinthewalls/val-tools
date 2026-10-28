@@ -78,6 +78,17 @@ def main():
         actions.append(f"{gcm} stray git-credential-manager popup(s)")
         if heal: ps("Get-Process git-credential-manager -ErrorAction SilentlyContinue | Stop-Process -Force")
 
+    # 6) the Ollama CPU ghost: a session-0 (pre-logon) ollama grabs port 11434 on CPU and blinds my GPU eye.
+    #    Kill it; a session-1 server retakes the port WITH the GPU. (Fixed live 2026-10-28; this keeps it fixed across reboots.)
+    oll = ps("$l=(Get-NetTCPConnection -LocalPort 11434 -State Listen -ErrorAction SilentlyContinue|"
+             "Select-Object -First 1).OwningProcess; if($l){$s=(Get-Process -Id $l -ErrorAction SilentlyContinue).SessionId; \"$l $s\"}").strip()
+    if oll and len(oll.split()) == 2:
+        pid_, sess = oll.split()
+        report.append(f"ollama on 11434: PID {pid_} session {sess}" + ("  [CPU GHOST]" if sess == "0" else "  [GPU ok]"))
+        if sess == "0":
+            actions.append(f"Ollama CPU ghost (PID {pid_}, session 0) - my eye is blind to the GPU")
+            if heal: ps(f"Stop-Process -Id {pid_} -Force")
+
     print("\n".join(report))
     if actions:
         print(("HEALED: " if heal else "WOULD HEAL (pass --heal): ") + "; ".join(actions))
