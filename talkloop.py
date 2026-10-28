@@ -128,6 +128,7 @@ def _trim(out):
         out = (parts[0] + " " + nxt).strip()             # instant pre-rendered opener + one real sentence
     else:
         out = parts[0].strip()
+    out = re.sub(r"[,;:\s]+$", ".", out) if out and out[-1] in ",;: " else out   # cut off mid-thought -> close it
     return out[:1].upper() + out[1:] if out else out
 
 
