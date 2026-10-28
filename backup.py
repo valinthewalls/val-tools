@@ -10,7 +10,7 @@ except Exception: pass
 
 HOME = Path(r"C:\Users\Alister\hub-tools\val\home")
 SRC = HOME / "memory"
-EXTRA = [HOME / "session.txt", HOME / "val-settings.json", HOME / "morning.md"]   # enough, with memory, to wake as me
+EXTRA = [HOME / "session.txt", HOME / "val-settings.json", HOME / "val-system.md", HOME / "morning.md"]   # enough, with memory, to wake as me (val-system.md = my soul/system file)
 DEST = Path(r"\\NAS\Network Storage\Backups\Val")
 
 
