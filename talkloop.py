@@ -269,7 +269,7 @@ try:
     VPRINT = np.load(VP.PRINT) if os.path.exists(VP.PRINT) else None
 except Exception:
     VP, VPRINT = None, None
-ALICE_THR = 0.62
+ALICE_THR = 0.66   # 10-28 17:50 retrain (+2 clips on 2 mics): her held-out min 0.713, best not-her 0.622
 
 
 def voice_score(audio):
