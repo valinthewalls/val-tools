@@ -34,8 +34,14 @@ if __name__ == "__main__":
     fresh = "--fresh" in argv
     model = MODEL
     if "--model" in argv: model = argv[argv.index("--model") + 1]
-    args = [a for a in argv if a != "--fresh" and a != "--model" and a != model]
-    q = args[0] if args else "In one or two sentences: what app/window is in focus on this screen, and what is the single most obvious thing a user would click or do next?"
+    goal = argv[argv.index("--goal") + 1] if "--goal" in argv else None
+    skip = {"--fresh", "--model", model, "--goal", goal}
+    args = [a for a in argv if a not in skip]
+    if goal:   # actionable reflex: given what I want, what do I click and roughly where
+        q = (f"I want to: {goal}. Looking at this screen, name the single UI element I should click to do that and describe "
+             f"WHERE it is (e.g. 'the green Submit button, bottom-right'). If it isn't visible, say what to do first. Be brief.")
+    else:
+        q = args[0] if args else "In one or two sentences: what app/window is in focus on this screen, and what is the single most obvious thing a user would click or do next?"
     try:
         resp, secs = ask(q, fresh, model)
         print(f"[{model} in {secs:.1f}s]\n{resp}")
