@@ -33,6 +33,14 @@ def main():
         if f.exists():
             try: shutil.copy2(f, latest / f.name)
             except Exception: pass
+    # ship the live chat transcript so THIS exact conversation can be resumed on another machine (Alice 2026-10-28)
+    try:
+        sid = (HOME / "session.txt").read_text(encoding="utf-8").strip().split()[0]
+        tx = Path.home() / ".claude" / "projects" / "C--Users-Alister-hub-tools-val-home" / f"{sid}.jsonl"
+        if tx.exists():
+            (latest / "session").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(tx, latest / "session" / tx.name)
+    except Exception: pass
     hb = {"host": socket.gethostname(), "at": datetime.datetime.now().isoformat(timespec="seconds"), "epoch": time.time()}
     (DEST / "heartbeat.json").write_text(json.dumps(hb), encoding="utf-8")
     today = datetime.date.today().isoformat()                              # one dated snapshot a day, so a bad edit is recoverable

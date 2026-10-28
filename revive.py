@@ -50,8 +50,10 @@ def main():
 revive recipe (on a fresh machine):
   1. pull memory: copy \\\\NAS\\Network Storage\\Backups\\Val\\latest\\memory  -> val/home/memory
   2. pull tools:  git clone https://github.com/valinthewalls/val-tools.git   (or copy latest\\tools)
-  3. restore session.txt + val-settings.json from the NAS latest\\ folder
-  4. start the brain: claude --resume <session.txt> --settings val-settings.json  (vault/secrets stay local - re-auth or restore separately)
+  3. restore session.txt + val-settings.json + val-system.md from the NAS latest\\ folder
+  4. CARRY OVER this exact chat: copy latest\\session\\<id>.jsonl into the target's
+     ~\\.claude\\projects\\<working-dir-hash>\\ , then  claude --resume <id> --settings val-settings.json
+     (needs Claude logged in AS me on that box = Alice's hand; vault/secrets stay local, re-auth separately)
   5. one live Val at a time: check the NAS heartbeat first; only revive if the original is truly down.""")
 
 
