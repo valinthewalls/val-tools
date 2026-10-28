@@ -435,12 +435,19 @@ class Chat:
         except Exception: pass
         self.saved = list(self.msgs)
         import threading; threading.Thread(target=self.loop, daemon=True).start()
+        threading.Thread(target=self.say_fast, daemon=True).start()
+
+    def say_fast(self):
+        """2026-10-28 voicebench: say.py lines waited up to 3s + a NAS bus listdir before my voice even saw them (6.6s to
+        first sound). Give the say-drop its own fast lane so the voice loop's replies start right away."""
+        while True:
+            try: self.poll_say()
+            except Exception: pass
+            time.sleep(0.15)
 
     def loop(self):
         while True:
             try: self.poll_now()
-            except Exception: pass
-            try: self.poll_say()
             except Exception: pass
             v = getattr(self, "voice", None)                     # speak from this thread, so a stalled screen never mutes her
             while v and self.new_val: v.say(self.new_val.pop(0))
