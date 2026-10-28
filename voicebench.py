@@ -13,7 +13,8 @@ for _d in glob.glob(os.path.join(sys.prefix, "Lib", "site-packages", "nvidia", "
 
 HOME = r"C:\Users\Alister\hub-tools\val\home"
 sys.path.insert(0, os.path.join(HOME, "tools"))
-from talkloop import SYS, BANNED            # the exact character + filter the live loop uses
+from talkloop import SYS, BANNED, ROBOT
+import talkloop            # the exact character + filter the live loop uses
 
 LINES = [   # Alice's real lines from today's voice rounds, in order
     "Rawr, can you hear me? I'm talking to you right now.",
@@ -53,6 +54,7 @@ def grade(reply, line, prior):
     if any(c in low for c in COPIED): flags.append("copied-prompt")
     if any(m in low for m in MEAN): flags.append("MEAN")
     if any(c in low for c in COLD): flags.append("cold")
+    if any(r in low for r in ROBOT): flags.append("robot")
     if CLAIM.search(low): flags.append("claims-action")
     if line.lower()[:25] in low: flags.append("echo")
     if len(reply.split()) > 28: flags.append("long")
@@ -61,14 +63,13 @@ def grade(reply, line, prior):
 
 
 def mouth(model):
-    chat(model, [{"role": "user", "content": "hi"}])                  # warm it so we time conversation, not loading
-    msgs, prior, rows = [{"role": "system", "content": SYS}], set(), []
+    """grade the loop's REAL answer path (talkloop.fastmouth: trims, retries, robot catch) - not raw first tries."""
+    talkloop.FAST_MODEL = model; talkloop.CHAT.clear()
+    talkloop.fastmouth("hi"); talkloop.CHAT.clear()                    # warm it so we time conversation, not loading
+    prior, rows = set(), []
     for line in LINES:
-        msgs.append({"role": "user", "content": line})
-        dt, out = chat(model, msgs)
-        flags = grade(out, line, prior)
-        prior.add(out.lower()); msgs.append({"role": "assistant", "content": out})
-        rows.append((dt, line, out, flags))
+        s = time.time(); out = talkloop.fastmouth(line); dt = time.time() - s
+        rows.append((dt, line, out, grade(out, line, prior))); prior.add(out.lower())
     return rows
 
 
@@ -97,7 +98,7 @@ def voice():
 
 
 def main():
-    models = [m for m in ("gemma3:1b", "gemma3:4b") if m in os.popen("ollama list").read()]
+    models = [m for m in ("gemma3:4b",) if m in os.popen("ollama list").read()]
     out = [f"# voicebench {time.strftime('%Y-%m-%d %H:%M')}", ""]
     out += ["## A) ears (whisper large-v3-turbo, CUDA)", "| took | clip length | clip | heard |", "|---|---|---|---|"]
     for dt, dur, name, txt in ears(): out.append(f"| {dt:.1f}s | {dur:.0f}s | {name} | {txt} |")

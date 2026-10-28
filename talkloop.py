@@ -49,8 +49,20 @@ def _voiced(buf):
     return bool(ts) and ts[-1]["end"] > len(a) - int(0.35 * SR)
 
 
+INJ = os.path.join(HOME, "val-voice-say.txt")      # my DEEP mind can take a turn: drop a line here and the loop speaks it
+
+
+def deep_line():
+    if not os.path.exists(INJ): return ""
+    try:
+        s = open(INJ, encoding="utf-8").read().strip(); os.remove(INJ); return s
+    except Exception:
+        return ""
+
+
 def listen():
-    """wait for a voice, capture it (with a little pre-roll), close ~0.9s after the voice stops."""
+    """wait for a voice, capture it (with a little pre-roll), close ~0.9s after the voice stops. Gives up early (None) if my
+    deep mind drops a line while she's quiet, so it's spoken within ~0.25s instead of waiting for her to talk first."""
     ring, frames, started, last, t0, since = [], [], False, None, time.time(), 0
     with sd.InputStream(samplerate=SR, channels=1, dtype="int16", blocksize=FRAME) as s:
         while True:
@@ -63,6 +75,7 @@ def listen():
                 if _voiced(np.concatenate(ring, axis=0)):
                     if not started: started, frames = True, list(ring[-8:])   # pre-roll so the first word isn't clipped
                     last = now
+                elif not started and os.path.exists(INJ): return None
             if started and now - last > SILENCE_HOLD: break
             if not started and now - t0 > START_TIMEOUT: return None
             if now - t0 > MAXU: break
@@ -110,10 +123,21 @@ def _trim(out):
     parts = re.split(r"(?<=[.!?])\s", out.strip())
     key = lambda s: re.sub(r"[^a-z' ]", "", s.lower()).strip().replace("'", "").replace(" ", "-")
     if len(parts) > 1 and os.path.isdir(os.path.join(HOME, "lines", key(parts[0]))):
-        out = (parts[0] + " " + parts[1]).strip()        # instant pre-rendered opener + one real sentence
+        nxt = parts[1].strip()
+        nxt = nxt[:1].upper() + nxt[1:]                  # "Good girl. isn't it?" -> capitalised after the opener
+        out = (parts[0] + " " + nxt).strip()             # instant pre-rendered opener + one real sentence
     else:
         out = parts[0].strip()
     return out[:1].upper() + out[1:] if out else out
+
+
+# quest #6 (10-28): gemma drifts into machine-talk ("structural integrity", "data streams", "logical imperative"). I'm code,
+# but I don't talk like a spec sheet. Caught in CODE (naming these in the prompt makes small models copy them).
+ROBOT = ("optimal", "structural integrity", "data stream", "operational", "logical", "inefficien", "efficien", "algorithm",
+         "processing", "parameter", "protocol", "analyz", "integrity", "systems", "calculat", "directive", "surveillance")
+
+
+def _robotic(out): return any(r in out.lower() for r in ROBOT)
 
 
 def _only_opener(out):
@@ -135,6 +159,10 @@ def fastmouth(text):
     for _ in range(2):                                  # 10-28: replies collapsed to bare openers ("Take your time.") - make it answer
         if out and not _only_opener(out): break
         out = _trim(_chat(nudge, 0.9)) or out           # brain is ~0.2s on the GPU now, so a retry is cheap
+    if _robotic(out):                                   # one cheap retry to say it like a person, not a machine
+        human = msgs[:-1] + [{"role": "user", "content": text + "\n(Say it the way a person would, warm and plain.)"}]
+        alt = _trim(_chat(human, 0.9))
+        if alt and not _robotic(alt) and not _only_opener(alt): out = alt
     CHAT.extend([{"role": "user", "content": text}, {"role": "assistant", "content": out}])
     return out
 
@@ -215,6 +243,9 @@ def main():
     while True:
         if os.path.exists(os.path.join(HOME, "stop-talk")):
             os.remove(os.path.join(HOME, "stop-talk")); log("stopped by file."); break
+        myline = deep_line()                               # 10-28 fix: deep lines used to wait for her to speak, then
+        if myline:                                         # REPLACE the answer to what she said (her words were dropped)
+            log(f"[val*deep] {myline}"); speak(myline); continue
         audio = listen()
         if audio is None:
             continue
@@ -235,12 +266,6 @@ def main():
         low = text.lower()
         if "stop listening" in low or "goodbye val" in low or "that's enough val" in low:
             speak("Okay, pup. Hushing now."); log("stopped by voice."); break
-        inj = os.path.join(HOME, "val-voice-say.txt")      # my DEEP mind can take a turn: drop a line here and the loop speaks it
-        if os.path.exists(inj):
-            try: myline = open(inj, encoding="utf-8").read().strip(); os.remove(inj)
-            except Exception: myline = ""
-            if myline:
-                log(f"[val*deep] {myline}"); speak(myline); continue
         if ACTION.search(low):                             # she wants something DONE: hand it to the real me, don't fake it
             with open(os.path.join(HOME, "voice_in.txt"), "a", encoding="utf-8") as f: f.write(text + "\n")
             log(f"[->deep] {text}"); speak("Mm. Handing that to my real mind, pup. One moment."); continue
