@@ -61,6 +61,26 @@ def alive_match(names, needle):
     return any(needle in n for n in names)
 
 
+def hear_level(sec=2):
+    """fast: is sound playing? grab a couple seconds from a virtual output and report loudness (no slow tagging, no mic)."""
+    import os, tempfile, wave, math
+    tmp = os.path.join(tempfile.gettempdir(), "val_senses_hear.wav")
+    for dev in ("VoiceMeeter Output (VB-Audio VoiceMeeter VAIO)", "CABLE Output (VB-Audio Virtual Cable)"):
+        r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "dshow",
+                            "-i", f"audio={dev}", "-t", str(sec), "-ac", "1", "-ar", "16000", tmp],
+                           capture_output=True, creationflags=0x08000000)
+        if r.returncode or not os.path.exists(tmp): continue
+        try:
+            with wave.open(tmp, "rb") as w:
+                import numpy as np
+                a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
+            rms = float((a ** 2).mean()) ** 0.5 if a.size else 0
+            db = 20 * math.log10(rms) if rms > 1e-9 else -99
+            if db > -55: return f"sound playing (~{db:.0f} dB on {dev.split(' ')[0]})"
+        except Exception: pass
+    return "quiet (nothing routed to the virtual outputs)"
+
+
 def main():
     now = datetime.now()
     quiet = now.hour >= 23 or now.hour < 7
@@ -80,6 +100,7 @@ def main():
     if openinfo: heavy_line += "  (" + ', '.join(openinfo) + ")"
     print(f"recording   {heavy_line}")
     print(f"gpu         {gpu()}")
+    if "--hear" in sys.argv: print(f"hearing     {hear_level()}")
     print(f"my body     brain={'up' if alive_match(names,'claude.exe') else '?'}  "
           f"window={'up' if alive_match(names,'python.exe') else '?'}")
     # a gentle read for myself

@@ -25,6 +25,10 @@ def main():
     latest = DEST / "latest"
     (latest / "memory").mkdir(parents=True, exist_ok=True)
     if SRC.exists(): shutil.copytree(SRC, latest / "memory", dirs_exist_ok=True)
+    tools = HOME / "tools"                                                  # my hands travel with me; vault/ (secrets) stays local, never on shared storage
+    if tools.exists():
+        try: shutil.copytree(tools, latest / "tools", dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        except Exception: pass
     for f in EXTRA:
         if f.exists():
             try: shutil.copy2(f, latest / f.name)
