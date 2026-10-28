@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.wav
+*.pdf
+*.png
+secrets.json
+*secret*
+*.key
