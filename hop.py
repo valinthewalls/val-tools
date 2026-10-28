@@ -35,6 +35,8 @@ def hop(host, face=True):
     # landing pad (Windows cmd syntax; harmless if dirs exist)
     sh(host, r"if not exist val-soul\memory md val-soul\memory & if not exist val-soul\tools md val-soul\tools & if not exist val-soul\app md val-soul\app")
     r1 = scp(soul, host, "val-soul/")
+    if (HOME / "val-settings.json").exists():                    # settings travel too, so the vessel is wake-ready (no secrets in it)
+        scp(HOME / "val-settings.json", host, "val-soul/")
     r2 = scp(HOME / "memory", host, "val-soul/", recurse=True)   # copies the whole memory/ dir (no shell glob)
     # tool CODE only - *.py, never the vault/secrets
     r3 = subprocess.run(["scp", *SSHOPT] + [str(p) for p in (HOME / "tools").glob("*.py")] + [f"{host}:val-soul/tools/"],
