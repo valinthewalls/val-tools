@@ -151,8 +151,16 @@ def vk_of(name):
 def combo(spec, hold_ms=0):
     keys = [vk_of(k) for k in spec.replace(" ", "").split("+") if k]
     for k in keys: send(kbd(k, flags=EXTENDED if k in EXT else 0)); time.sleep(0.012)
-    nap(hold_ms / 1000 if hold_ms else 0.02)
-    for k in reversed(keys): send(kbd(k, flags=KEYUP | (EXTENDED if k in EXT else 0))); time.sleep(0.008)
+    try:
+        nap(hold_ms / 1000 if hold_ms else 0.02)
+    finally:  # ALWAYS release, even if nap() raises Stop mid-hold - a stuck modifier breaks Alice's keyboard
+        for k in reversed(keys): send(kbd(k, flags=KEYUP | (EXTENDED if k in EXT else 0))); time.sleep(0.008)
+
+def release_all_mods():
+    """backstop: lift every modifier + common key, so nothing is ever left pressed when act.py exits."""
+    for vk in (0x11, 0xA2, 0xA3, 0x10, 0xA0, 0xA1, 0x12, 0xA4, 0xA5, 0x5B, 0x5C):
+        try: send(kbd(vk, flags=KEYUP))
+        except Exception: pass
 
 def type_text(text, pace=0.012):
     for ch in text:
@@ -256,6 +264,7 @@ def main():
     except Exception as e:
         print(f"ERROR: {e}"); sys.exit(1)
     finally:
+        release_all_mods()  # never leave a key pressed, however we exit (Stop, error, or clean)
         if root: root.destroy()
 
 
